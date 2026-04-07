@@ -87,7 +87,11 @@ Since names in JTL and on the web are rarely identical, normalization is perform
 -----------------
     
 *   \[ \] **Live Statistics:** Visualization of daily sales figures directly in the dashboard.
-    
+
+*   \[ \] **Tablet Delivery System (TDS) :** Tablet Based Delivery System to Optimise Productivity.
+
+*   \[ \] **Browser Delivery System (BDS) :** Browser Based Order Delivery System to Optimise Productivity.
+  
 *   \[ \] **Mobile Support:** Optimization for tablet-based POS solutions.
     
 
