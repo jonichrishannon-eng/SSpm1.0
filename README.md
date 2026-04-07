@@ -10,6 +10,31 @@ In retail environments like the ICP kiosk, manual barcode maintenance is often a
 
 The system scans barcodes, determines the product name via API, and matches it with the JTL database using **fuzzy matching**.
 
+### 🚨 PREREQUISITES 🚨
+
+To implement this system, the following components are strictly required:
+
+*   **Microsoft ODBC Driver**: This is essential for establishing a stable connection between the middleware and the MSSQL JTL-Wawi database.
+    
+*   **PHP cURL Extension**: Used to perform robust API requests to OpenFoodFacts with defined timeouts, replacing the less reliable file\_get\_contents.
+    
+*   **PDO (PHP Data Objects)**: The standard interface used to communicate with the database.
+    
+*   **OpenFoodFacts API Access**: A stable internet connection is required to query the global product database for items not yet mapped in the local system.
+    
+*   **HTTPS Environment**: If you plan to use the **Barcode Detection API**, a secure context (HTTPS) is mandatory for the browser to allow camera access.
+    
+
+### 🛠 System Configuration Requirements
+
+*   **TrustServerCertificate**: The connection string must include TrustServerCertificate=yes to handle SSL handshake requirements during the ODBC connection.
+    
+*   **Schema Access**: The database user must have permissions to access the dbo schema, specifically the tArtikel and tArtikelBeschreibung tables.
+    
+*   **UTF-8 Encoding**: The environment must support UTF-8 to correctly display special characters and German umlauts in product names.
+
+
+
 ⚙️ System Architecture & Workflow
 ---------------------------------
 
@@ -60,8 +85,6 @@ Since names in JTL and on the web are rarely identical, normalization is perform
 
 🚀 Future Outlook
 -----------------
-
-*   \[ \] **Webcam Scanning:** Integration of the _Barcode Detection API_ for hardware-free scanning.
     
 *   \[ \] **Live Statistics:** Visualization of daily sales figures directly in the dashboard.
     
