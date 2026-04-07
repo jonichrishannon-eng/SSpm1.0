@@ -23,7 +23,6 @@ Das System folgt einer modularen Logik, die unabhängig von der Programmiersprac
 3. **Data-Matching:** Vergleich des API-Namens mit `dbo.tArtikelBeschreibung` via Levenshtein-Algorithmus.
 4. **Logic-Gate:**
    - **Match > 90%:** Sofortige Anzeige von Artikel und Brutto-Preis.
-   - **Match < 90%:** Aktivierung des **Learning-Mode** (Vorschlag zur Verknüpfung).
 5. **Persistence:** Rückschreiben des Barcodes in `dbo.tArtikel` per SQL-Update.
 
 ---
@@ -42,7 +41,7 @@ Da Namen in JTL und im Web selten identisch sind, wird eine Normalisierung durch
 - Entfernung von Sonderzeichen & Leerzeichen.
 - Case-Insensitivity (Kleinschreibung).
 - Berechnung der Ähnlichkeit (z.B. `similar_text` oder Levenshtein).
-
+   
 ### 3. Der Learning-Mode (Automatisierung)
 Falls ein Barcode unbekannt ist, bietet das UI eine "Lern-Taste" an. Diese führt folgenden Prozess aus:
 ```sql
