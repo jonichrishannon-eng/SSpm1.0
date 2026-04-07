@@ -1,51 +1,74 @@
-# 🥤 SaftladenSuite Pro Max
-> **Intelligente Middleware zur Automatisierung des Kiosk-Verkaufs mit JTL-WAWI Anbindung**
+🥤 SaftladenSuite Pro Max
+=========================
 
-![Version](https://img.shields.io/badge/Version-1.0.0-blue)
-![Build](https://img.shields.io/badge/Status-Funktional-success)
-![Database](https://img.shields.io/badge/DB-JTL--WAWI%20(MSSQL)-orange)
+> **Intelligent middleware for automating kiosk sales with JTL-Wawi integration**
 
-## 📋 Übersicht
-In Handelsumgebungen wie dem ICP-Kiosk ist die manuelle Pflege von Barcodes oft ein Flaschenhals. Die **SaftladenSuite Pro Max** löst dieses Problem durch eine intelligente Verknüpfung von lokaler Bestandsführung und globalen Produktdatenbanken.
+📋 Overview
+-----------
 
-Das System scannt Barcodes, ermittelt via API die Produktbezeichnung und gleicht diese mittels **Fuzzy-Matching** mit der JTL-Datenbank ab. Ein integrierter **Learning-Mode** erlaubt es, neue Barcodes mit nur einem Klick permanent in die Warenwirtschaft zu übernehmen.
+In retail environments like the ICP kiosk, manual barcode maintenance is often a bottleneck. **SaftladenSuite Pro Max** solves this problem through intelligent linking of local inventory management and global product databases.
 
----
+The system scans barcodes, determines the product name via API, and matches it with the JTL database using **fuzzy matching**.
 
-## ⚙️ Systemarchitektur & Workflow
+⚙️ System Architecture & Workflow
+---------------------------------
 
-Das System folgt einer modularen Logik, die unabhängig von der Programmiersprache an jedem PC mit Datenbankzugriff implementiert werden kann:
+The system follows a modular logic that can be implemented on any PC with database access, regardless of the programming language:
 
+1.  **Input:** Capture the EAN code (integer) via a scanner.
+    
+2.  **Web Enrichment:** Query the [OpenFoodFacts API](https://world.openfoodfacts.org/data) to determine the plain product name.
+    
+3.  **Data Matching:** Compare the API name with dbo.tArtikelBeschreibung via Levenshtein algorithm.
+    
+4.  **Logic Gate:**
+    
+    *   **Match > 90%:** Immediate display of the item and gross price.
+        
+5.  **Persistence:** Write the barcode back to dbo.tArtikel via SQL update.
+    
 
+🛠 Implementation Guide (Technical Manual)
+------------------------------------------
 
-1. **Input:** Erfassung des EAN-Codes (Ganzzahl) über einen Scanner.
-2. **Web-Enrichment:** Abfrage der [OpenFoodFacts API](https://world.openfoodfacts.org/data) zur Ermittlung des Klarnamens.
-3. **Data-Matching:** Vergleich des API-Namens mit `dbo.tArtikelBeschreibung` via Levenshtein-Algorithmus.
-4. **Logic-Gate:**
-   - **Match > 90%:** Sofortige Anzeige von Artikel und Brutto-Preis.
-5. **Persistence:** Rückschreiben des Barcodes in `dbo.tArtikel` per SQL-Update.
+### 1\. Database Connectivity
 
----
+Access is handled via the **Microsoft ODBC driver**. For stability, it is crucial to manage the connection in a resource-efficient manner.
 
-## 🛠 Implementierungs-Guide (Technischer Leitfaden)
+**Best Practices:**
 
-### 1. Datenbank-Konnektivität
-Der Zugriff erfolgt über den **Microsoft ODBC-Treiber**. Für die Stabilität ist es entscheidend, die Verbindung ressourcenschonend zu verwalten.
+*   Use schema prefixes: dbo.tArtikel.
+    
+*   Cursor Management: Call closeCursor() after each query to avoid blockages in the SQL server.
+    
 
-**Best Practice:**
-- Schema-Präfixe nutzen: `dbo.tArtikel`.
-- Cursor-Management: Nach jeder Abfrage `closeCursor()` aufrufen, um Blockaden im SQL-Server zu vermeiden.
+### 2\. Fuzzy Matching Logic
 
-### 2. Fuzzy-Matching Logik
-Da Namen in JTL und im Web selten identisch sind, wird eine Normalisierung durchgeführt:
-- Entfernung von Sonderzeichen & Leerzeichen.
-- Case-Insensitivity (Kleinschreibung).
-- Berechnung der Ähnlichkeit (z.B. `similar_text` oder Levenshtein).
-   
-### 3. Der Learning-Mode (Automatisierung)
-Falls ein Barcode unbekannt ist, bietet das UI eine "Lern-Taste" an. Diese führt folgenden Prozess aus:
-```sql
--- Identifikation des Artikels und Verknüpfung
-UPDATE dbo.tArtikel 
-SET cBarcode = 'SCAN_WERT' 
-WHERE kArtikel = (SELECT kArtikel FROM dbo.tArtikelBeschreibung WHERE cName = 'VORSCHLAG');
+Since names in JTL and on the web are rarely identical, normalization is performed:
+
+*   Removal of special characters and spaces.
+    
+*   Case-insensitivity (lowercase).
+    
+*   Similarity calculation (e.g., similar\_text or Levenshtein).
+    
+
+⚠️ Known Hurdles & Solutions
+----------------------------
+
+**ProblemSolutionODBC Timeout**Use prepare() & execute() instead of direct queries.**Memory Limit**Row-by-row fetching (while loop) instead of fetchAll().**API Latency**Switch from file\_get\_contents to **cURL** with a 3s timeout.**SSL Error**Set TrustServerCertificate=yes in the connection string.
+
+🚀 Future Outlook
+-----------------
+
+*   \[ \] **Webcam Scanning:** Integration of the _Barcode Detection API_ for hardware-free scanning.
+    
+*   \[ \] **Live Statistics:** Visualization of daily sales figures directly in the dashboard.
+    
+*   \[ \] **Mobile Support:** Optimization for tablet-based POS solutions.
+    
+
+👨‍💻 Developed for
+-------------------
+
+**ICP Kiosk / IT Department** _Documentation for replicating the system on other workstations._
