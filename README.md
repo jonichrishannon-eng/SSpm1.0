@@ -14,7 +14,7 @@ The system scans barcodes, determines the product name via API, and matches it w
 -----------
 To implement this system, the following components are strictly required:
 
-*   **Microsoft ODBC Driver**: This is essential for establishing a stable connection between the middleware and the MSSQL JTL-Wawi database.
+*   **Microsoft ODBC Driver**: 
     
 *   **PHP cURL Extension**: Used to perform robust API requests to OpenFoodFacts with defined timeouts, replacing the less reliable file\_get\_contents.
     
@@ -26,13 +26,14 @@ To implement this system, the following components are strictly required:
     
 
 ### 🛠 System Configuration Requirements
-
-*   **TrustServerCertificate**: The connection string must include TrustServerCertificate=yes to handle SSL handshake requirements during the ODBC connection.
     
 *   **Schema Access**: The database user must have permissions to access the dbo schema, specifically the tArtikel and tArtikelBeschreibung tables.
 
+*   **Microsoft ODBC Driver for SQL Server**: This is essential for establishing a stable connection between the middleware and the MSSQL JTL-Wawi database. In addition to the PHP extensions, the physical driver must be installed on the Windows machine hosting XAMPP to allow the pdo\_odbc extension to function.
+    
+*   **TrustServerCertificate**: Your connection string in JonaTLan.php must include TrustServerCertificate=yes to handle SSL handshake requirements during the ODBC connection, and to bypass SSL handshake issues common in local development environments.
 
-
+  
 ⚙️ System Architecture & Workflow
 ---------------------------------
 
@@ -125,13 +126,6 @@ The following extensions are mandatory for the system's database connectivity an
 4.  Remove the semicolon (;) from the beginning of each line to uncomment and enable them.
     
 5.  **Save** the file and **Restart** the Apache module in the XAMPP Control Panel for the changes to take effect.
-    
-
-### 💻 Additional System Prerequisites
-
-*   **Microsoft ODBC Driver for SQL Server**: In addition to the PHP extension, the physical driver must be installed on the Windows machine hosting XAMPP to allow the pdo\_odbc extension to function.
-    
-*   **TrustServerCertificate**: Your connection string in JonaTLan.php must include TrustServerCertificate=yes to bypass SSL handshake issues common in local development environments.
 
   
 👨‍💻 Developed for
