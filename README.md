@@ -11,7 +11,7 @@ In retail environments like the ICP kiosk, manual barcode maintenance is often a
 The system scans barcodes, determines the product name via API, and matches it with the JTL database using **fuzzy matching**.
 
 ### 🚨 PREREQUISITES 🚨
-
+-----------
 To implement this system, the following components are strictly required:
 
 *   **Microsoft ODBC Driver**: This is essential for establishing a stable connection between the middleware and the MSSQL JTL-Wawi database.
@@ -94,7 +94,7 @@ Nothing here! (yet.)
 To ensure the **SaftladenSuite Pro Max** operates correctly within a XAMPP environment, specific PHP extensions must be enabled in your php.ini configuration.
 
 ### 🚨 PHP EXTENSIONS FOR XAMPP 🚨
-
+----------------------------------
 The following extensions are mandatory for the system's database connectivity and API communication:
 
 *   **php\_pdo\_odbc**: This is the primary extension required for the middleware to communicate with the MSSQL JTL-Wawi database using the Microsoft ODBC Driver.
