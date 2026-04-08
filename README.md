@@ -30,8 +30,6 @@ To implement this system, the following components are strictly required:
 *   **TrustServerCertificate**: The connection string must include TrustServerCertificate=yes to handle SSL handshake requirements during the ODBC connection.
     
 *   **Schema Access**: The database user must have permissions to access the dbo schema, specifically the tArtikel and tArtikelBeschreibung tables.
-    
-*   **UTF-8 Encoding**: The environment must support UTF-8 to correctly display special characters and German umlauts in product names.
 
 
 
@@ -80,8 +78,7 @@ Since names in JTL and on the web are rarely identical, normalization is perform
 
 ⚠️ Known Hurdles & Solutions
 ----------------------------
-
-**ProblemSolutionODBC Timeout**Use prepare() & execute() instead of direct queries.**Memory Limit**Row-by-row fetching (while loop) instead of fetchAll().**API Latency**Switch from file\_get\_contents to **cURL** with a 3s timeout.**SSL Error**Set TrustServerCertificate=yes in the connection string.
+Nothing here! (yet.)
 
 🚀 Future Outlook
 -----------------
@@ -94,7 +91,49 @@ Since names in JTL and on the web are rarely identical, normalization is perform
   
 *   \[ \] **Mobile Support:** Optimization for tablet-based POS solutions.
     
+To ensure the **SaftladenSuite Pro Max** operates correctly within a XAMPP environment, specific PHP extensions must be enabled in your php.ini configuration.
 
+### 🚨 PHP EXTENSIONS FOR XAMPP 🚨
+
+The following extensions are mandatory for the system's database connectivity and API communication:
+
+*   **php\_pdo\_odbc**: This is the primary extension required for the middleware to communicate with the MSSQL JTL-Wawi database using the Microsoft ODBC Driver.
+    
+*   **php\_curl**: This extension is required to perform robust, high-performance API requests to OpenFoodFacts. It replaces the default file\_get\_contents to allow for better timeout handling and error management.
+    
+*   **php\_mbstring**: Necessary for handling multi-byte strings, ensuring that product names with special characters or German umlauts are processed correctly.
+    
+*   **php\_openssl**: Required to establish secure connections (HTTPS) when querying the external OpenFoodFacts API.
+    
+
+### 🛠 How to Enable Extensions in XAMPP
+
+1.  Open the **XAMPP Control Panel**.
+    
+2.  Click the **Config** button next to the Apache module and select **PHP (php.ini)**.
+    
+3.  Search for the following lines (use Ctrl + F):
+    
+    *   ;extension=pdo\_odbc
+        
+    *   ;extension=curl
+        
+    *   ;extension=mbstring
+        
+    *   ;extension=openssl
+        
+4.  Remove the semicolon (;) from the beginning of each line to uncomment and enable them.
+    
+5.  **Save** the file and **Restart** the Apache module in the XAMPP Control Panel for the changes to take effect.
+    
+
+### 💻 Additional System Prerequisites
+
+*   **Microsoft ODBC Driver for SQL Server**: In addition to the PHP extension, the physical driver must be installed on the Windows machine hosting XAMPP to allow the pdo\_odbc extension to function.
+    
+*   **TrustServerCertificate**: Your connection string in JonaTLan.php must include TrustServerCertificate=yes to bypass SSL handshake issues common in local development environments.
+
+  
 👨‍💻 Developed for
 -------------------
 
