@@ -185,7 +185,30 @@ Since ODBC connections are stored in the Windows Registry, you can export your s
 ------------------------------
 
 Your PHP code uses the following DSN string to initialize the connection. Note the inclusion of TrustServerCertificate to bypass local SSL handshake issues.
-  
+```
+// Example DSN Configuration in JonaTLan.php; Edit as needed:
+$dsn = "odbc:DSN=JonaTLan;TrustServerCertificate=yes;";
+$user = "sa";
+$password = "sa04jT14";
+
+try {
+    $pdo = new PDO($dsn, $user, $password);
+    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+} catch (PDOException $e) {
+    echo "Connection failed: " . $e->getMessage();
+}
+```
+
+### 🚨 Critical Performance Fixes
+
+To prevent the "Driver does not support that attribute" error or SQL hangs during fuzzy searches, the system implements:
+
+*   **Cursor Management:** Use $stmt->closeCursor() after every query to free the connection for the next request.
+    
+*   **Row-by-Row Fetching:** Avoid fetchAll() on large product tables to prevent memory exhaustion in the ODBC driver.
+
+
+
 👨‍💻 Developed for
 -------------------
 
