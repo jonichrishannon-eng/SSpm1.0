@@ -1,4 +1,4 @@
-🥤 SaftladenSuite Pro Max
+🥤 SaftladenSuite <sup>pro max</sup>
 =========================
 
 > **Intelligent middleware for automating kiosk sales with JTL-Wawi integration**
@@ -29,7 +29,7 @@ To implement this system, the following components are strictly required:
     
 *   **Schema Access**: The database user must have permissions to access the dbo schema, specifically the tArtikel and tArtikelBeschreibung tables.
 
-*   **Microsoft ODBC Driver for SQL Server**: This is essential for establishing a stable connection between the middleware and the MSSQL JTL-Wawi database. In addition to the PHP extensions, the physical driver must be installed on the Windows machine hosting XAMPP to allow the pdo\_odbc extension to function.
+*   **Microsoft ODBC Driver for SQL Server**: This is essential for establishing a stable connection between the middleware and the MSSQL JTL-Wawi database. In addition to the PHP extensions, the physical driver must be installed on the Windows machine hosting XAMPP to allow the pdo\_odbc extension to function. See "ODBC Setup" for more instructions.
     
 *   **TrustServerCertificate**: Your connection string in JonaTLan.php must include TrustServerCertificate=yes to handle SSL handshake requirements during the ODBC connection, and to bypass SSL handshake issues common in local development environments.
 
@@ -47,7 +47,7 @@ The system follows a modular logic that can be implemented on any PC with databa
     
 4.  **Logic Gate:**
     
-    *   **Match > 90%:** Immediate display of the item and gross price.
+    *   **Highest % Match:** Immediate display of the item and gross price.
         
 5.  **Persistence:** Write the barcode back to dbo.tArtikel via SQL update.
     
