@@ -13,8 +13,6 @@ The system scans barcodes, determines the product name via API, and matches it w
 ### 🚨 PREREQUISITES 🚨
 -----------
 To implement this system, the following components are strictly required:
-
-*   **Microsoft ODBC Driver**: 
     
 *   **PHP cURL Extension**: Used to perform robust API requests to OpenFoodFacts with defined timeouts, replacing the less reliable file\_get\_contents.
     
