@@ -127,9 +127,6 @@ The following extensions are mandatory for the system's database connectivity an
     
 5.  **Save** the file and **Restart** the Apache module in the XAMPP Control Panel for the changes to take effect.
 
-### ODBC Setup
-
-1. Make sure you have the "ODBC Driver  for SQL Server" installed on you system (see "System Configuration Requirements")
 
 🖥️ ODBC Connection Setup (MSSQL to PHP)
 ----------------------------------------
