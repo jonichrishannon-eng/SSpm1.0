@@ -79,7 +79,7 @@ Since names in JTL and on the web are rarely identical, normalization is perform
 *   Similarity calculation (e.g., similar\_text or Levenshtein).
     
 
-⚠️ Known Hurdles & Solutions
+⚠️ Known Hurdles, Limitations & Solutions
 ----------------------------
 Nothing here! (yet.)
 
