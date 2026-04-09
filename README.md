@@ -23,13 +23,15 @@ To implement this system, the following components are strictly required:
 *   **OpenFoodFacts API Access**: A stable internet connection is required to query the global product database for items not yet mapped in the local system.
     
 *   **HTTPS Environment**: If you plan to use the **Barcode Detection API**, a secure context (HTTPS) is mandatory for the browser to allow camera access.
+
+*   **JTL-Wawi:** or another Database Manager.
     
 
 ### 🛠 System Configuration Requirements
     
 *   **Schema Access**: The database user must have permissions to access the dbo schema, specifically the tArtikel and tArtikelBeschreibung tables.
 
-*   **Microsoft ODBC Driver for SQL Server**: This is essential for establishing a stable connection between the middleware and the MSSQL JTL-Wawi database. In addition to the PHP extensions, the physical driver must be installed on the Windows machine hosting XAMPP to allow the pdo\_odbc extension to function. See "ODBC Setup" for more instructions.
+*   **Microsoft ODBC Driver for SQL Server**: This is essential for establishing a stable connection between the middleware and the MSSQL JTL-Wawi database. In addition to the PHP extensions, the physical driver must be installed on the Windows machine hosting XAMPP to allow the pdo\_odbc extension to function. See "ODBC Connection Setup (MSSQL to PHP)" for more instructions.
     
 *   **TrustServerCertificate**: Your connection string in JonaTLan.php must include TrustServerCertificate=yes to handle SSL handshake requirements during the ODBC connection, and to bypass SSL handshake issues common in local development environments.
 
@@ -127,6 +129,64 @@ The following extensions are mandatory for the system's database connectivity an
     
 5.  **Save** the file and **Restart** the Apache module in the XAMPP Control Panel for the changes to take effect.
 
+### ODBC Setup
+
+1. Make sure you have the "ODBC Driver  for SQL Server" installed on you system (see "System Configuration Requirements")
+
+🖥️ ODBC Connection Setup (MSSQL to PHP)
+----------------------------------------
+
+To allow the **SaftladenSuite Pro Max** to communicate with your JTL-Wawi database, you must configure a Data Source Name (DSN) on the host machine.
+
+### 1\. Install the Driver
+
+Before configuring the connection, ensure the official driver is installed:
+
+*   **Download:** [Microsoft ODBC Driver for SQL Server](https://learn.microsoft.com/en-us/sql/connect/odbc/download-odbc-driver-for-sql-server)
+
+*   Version 13 was tested and works; but newer versions should work aswell
+    
+*   **Recommended Version:** ODBC Driver 17 or 18.
+    
+
+### 2\. Manual Configuration (Windows ODBC Manager)
+
+Follow these steps to create the JonaTLan DSN:
+
+1.  Press Win + R, type **odbcad32.exe**, and press Enter.
+    
+2.  Select the **System DSN** tab (to make it available for all users/services).
+    
+3.  Click **Add** and select **ODBC Driver 17 for SQL Server**.
+    
+4.  **Name:** Enter JonaTLan (this must match the name used in your PHP scripts).
+    
+5.  **Server:** Enter your SQL Server instance name (e.g., localhost\\JTLWAWI).
+    
+6.  **Authentication:** Select "With SQL Server authentication" and enter your credentials (e.g., User: sa).
+    
+7.  **Database:** Change the default database to your JTL database (e.g., eazybusiness).
+    
+8.  **Encryption:** - Check **Trust Server Certificate**.
+    
+    *   (If using Driver 18) Set "Encrypted" to **Optional**.
+        
+9.  Click **Test Data Source** to verify the connection.
+    
+
+### 3\. Backup/Export the Connection
+
+Since ODBC connections are stored in the Windows Registry, you can export your setup for deployment on other machines:
+
+*   **Registry Path:** HKEY\_LOCAL\_MACHINE\\SOFTWARE\\ODBC\\ODBC.INI\\YOUR_DATABASE
+    
+*   **Command:** Right-click the folder in regedit and select **Export** to create a .reg file.
+    
+
+💻 Technical Connection String
+------------------------------
+
+Your PHP code uses the following DSN string to initialize the connection. Note the inclusion of TrustServerCertificate to bypass local SSL handshake issues.
   
 👨‍💻 Developed for
 -------------------
