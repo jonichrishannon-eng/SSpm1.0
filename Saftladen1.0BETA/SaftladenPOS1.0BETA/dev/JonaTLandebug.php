@@ -3,62 +3,19 @@
 
 <head>
     <meta charset="UTF-8">
-    <title>SaftladenSuite POS</title>
+    <title>SaftladenSuite POS v1.1</title>
     <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;700&family=Lato&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="css/common.css">
-    <style>
-        .pos-display {
-            background: rgba(0, 0, 0, 0.7);
-            border: 2px solid #00ffcc;
-            border-radius: 20px;
-            padding: 40px;
-            margin: 20px auto;
-            max-width: 600px;
-            box-shadow: 0 0 30px rgba(0, 255, 204, 0.2);
-            text-align: center;
-        }
-
-        .product-name {
-            font-family: 'Oswald', sans-serif;
-            font-size: 2.5rem;
-            color: #fff;
-            margin-bottom: 15px;
-            line-height: 1.2;
-        }
-
-        .price-tag {
-            font-family: 'Oswald', sans-serif;
-            font-size: 6rem;
-            color: #00ffcc;
-            font-weight: bold;
-            margin: 10px 0;
-            text-shadow: 0 0 15px rgba(0, 255, 204, 0.4);
-        }
-
-        .match-info {
-            font-size: 0.9rem;
-            color: #555;
-            margin-top: 20px;
-            border-top: 1px solid #333;
-            padding-top: 10px;
-        }
-
-        .status-monitor {
-            background: #111;
-            border: 1px solid #444;
-            color: #0f0;
-            padding: 15px;
-            font-family: monospace;
-            font-size: 0.85rem;
-            text-align: left;
-            margin: 30px auto;
-            max-width: 600px;
-            border-radius: 5px;
-        }
-    </style>
+    <link rel="stylesheet" href="../css/common.css">
+    <link rel="stylesheet" href="../css/cyber-terminal.css">
 </head>
 
 <body>
+    <div class="background-effects">
+        <div class="grid-overlay"></div>
+        <div class="scan-line"></div>
+        <div class="floating-code"></div>
+    </div>
+
     <a href="Home.html" class="logo">
         <img src="https://iili.io/f8QkeA7.png" alt="Logo">
         <span class="logo-text">SaftladenSuite</span>
@@ -88,66 +45,73 @@
                 return strtolower(preg_replace('/[^a-zA-Z0-9]/', '', $str));
             }
 
+            function formatValue($val) {
+                if (empty($val)) {
+                    return '<span class="glitch">NO_DATA</span>';
+                }
+                return htmlspecialchars($val);
+            }
+
             if (!empty(trim($_POST['search'] ?? ''))) {
                 $search = trim($_POST['search']);
                 $debugLog = ["Scan: " . htmlspecialchars($search)];
+                $offData = null;
+                $offName = "";
+                $finalMatch = null;
+                $score = 0;
 
+                // 1. API Abfrage (OpenFoodFacts)
+                $api_url = "https://world.openfoodfacts.org/api/v0/product/" . urlencode($search) . ".json";
+                $res = null;
+                if (function_exists('curl_version')) {
+                    $ch = curl_init();
+                    curl_setopt($ch, CURLOPT_URL, $api_url);
+                    curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+                    curl_setopt($ch, CURLOPT_USERAGENT, 'SaftladenPOS/1.0');
+                    curl_setopt($ch, CURLOPT_TIMEOUT, 3);
+                    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+                    $res = curl_exec($ch);
+                    curl_close($ch);
+                } else {
+                    $res = @file_get_contents($api_url, false, stream_context_create(["http" => ["timeout" => 3]]));
+                }
+
+                if ($res) {
+                    $json = json_decode($res, true);
+                    if (isset($json['status']) && $json['status'] == 1) {
+                        $offData = $json['product'];
+                        $brands = $offData['brands'] ?? "";
+                        $name = $offData['product_name_de'] ?? $offData['product_name'] ?? "";
+
+                        if (!empty($brands) && stripos($name, $brands) === false) {
+                            if (strpos($brands, ',') !== false) {
+                                $brands = explode(',', $brands)[0];
+                            }
+                            $offName = trim($brands . " " . $name);
+                        } else {
+                            $offName = trim($name);
+                        }
+                    }
+                }
+                $debugLog[] = "API: " . ($offName ?: "Kein Name im Web");
+
+                // 2. Datenbank-Abfrage
                 try {
                     $dsn = "odbc:DSN=JonaTLan;TrustServerCertificate=yes;";
                     $pdo = new PDO($dsn, "sa", "sa04jT14");
                     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
                     $debugLog[] = "DB: OK";
 
-                    // 1. API Abfrage (cURL)
-                    $offName = "";
-                    $api_url = "https://world.openfoodfacts.org/api/v0/product/" . urlencode($search) . ".json";
-
-                    if (function_exists('curl_version')) {
-                        $ch = curl_init();
-                        curl_setopt($ch, CURLOPT_URL, $api_url);
-                        curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-                        curl_setopt($ch, CURLOPT_USERAGENT, 'SaftladenPOS/1.0');
-                        curl_setopt($ch, CURLOPT_TIMEOUT, 3);
-                        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false); // Fix for XAMPP SSL issues
-                        $res = curl_exec($ch);
-                        curl_close($ch);
-                    } else {
-                        $res = @file_get_contents($api_url, false, stream_context_create(["http" => ["timeout" => 3]]));
-                    }
-
-                    if ($res) {
-                        $json = json_decode($res, true);
-                        if (isset($json['status']) && $json['status'] == 1) {
-                            $brands = $json['product']['brands'] ?? "";
-                            $name = $json['product']['product_name_de'] ?? $json['product']['product_name'] ?? "";
-
-                            if (!empty($brands) && stripos($name, $brands) === false) {
-                                if (strpos($brands, ',') !== false) {
-                                    $brands = explode(',', $brands)[0];
-                                }
-                                $offName = trim($brands . " " . $name);
-                            } else {
-                                $offName = trim($name);
-                            }
-                        }
-                    }
-                    $debugLog[] = "API: " . ($offName ?: "Kein Name im Web");
-
-                    $finalMatch = null;
-                    $score = 0;
                     $safeSearch = str_replace("'", "''", $search);
 
-                    // 2. Direktsuche
-                    $sqlDirect = "SELECT TOP 1 a.fVKNetto, b.cName FROM dbo.tArtikel a 
-                                  LEFT JOIN dbo.tArtikelBeschreibung b ON a.kArtikel = b.kArtikel 
+                    // Direktsuche
+                    $sqlDirect = "SELECT TOP 1 a.fVKNetto, b.cName FROM dbo.tArtikel a
+                                  LEFT JOIN dbo.tArtikelBeschreibung b ON a.kArtikel = b.kArtikel
                                   WHERE a.cArtNr = '$safeSearch' OR a.cBarcode = '$safeSearch'";
 
-                    // WICHTIG: prepare statt query nutzen für Stabilität
                     $stmtDirect = $pdo->prepare($sqlDirect);
                     $stmtDirect->execute();
                     $direct = $stmtDirect->fetch(PDO::FETCH_ASSOC);
-
-                    // DER LEBENSRETTENDE BEFEHL: Hörer auflegen!
                     $stmtDirect->closeCursor();
 
                     if ($direct) {
@@ -157,88 +121,150 @@
                     } else {
                         $debugLog[] = "Direkttreffer: NEIN";
 
-                        // 3. Fuzzy Match
+                        // Fuzzy Match
                         if (!empty($offName)) {
                             $debugLog[] = "Fuzzy gestartet...";
-                            try {
-                                $cleanOFF = cleanString($offName);
-                                $sqlFuzzy = "SELECT b.cName, a.fVKNetto FROM dbo.tArtikel a JOIN dbo.tArtikelBeschreibung b ON a.kArtikel = b.kArtikel WHERE b.cName IS NOT NULL";
+                            $cleanOFF = cleanString($offName);
+                            $sqlFuzzy = "SELECT b.cName, a.fVKNetto FROM dbo.tArtikel a JOIN dbo.tArtikelBeschreibung b ON a.kArtikel = b.kArtikel WHERE b.cName IS NOT NULL";
 
-                                $stmtFuzzy = $pdo->prepare($sqlFuzzy);
-                                $stmtFuzzy->execute();
+                            $stmtFuzzy = $pdo->prepare($sqlFuzzy);
+                            $stmtFuzzy->execute();
 
-                                $count = 0;
-                                $bestName = "";
+                            while ($row = $stmtFuzzy->fetch(PDO::FETCH_ASSOC)) {
+                                $cleanJTL = cleanString($row['cName']);
+                                if (empty($cleanJTL)) continue;
 
-                                while ($row = $stmtFuzzy->fetch(PDO::FETCH_ASSOC)) {
-                                    $count++;
-                                    $cleanJTL = cleanString($row['cName']);
-                                    if (empty($cleanJTL))
-                                        continue;
-
-                                    $wordsOFF = preg_split('/[^a-zA-Z0-9]+/', strtolower($offName), -1, PREG_SPLIT_NO_EMPTY);
-                                    $matchedWords = 0;
-                                    $targetLower = strtolower($row['cName']);
-                                    foreach ($wordsOFF as $w) {
-                                        // Match whole words or substrings for robustness
-                                        if (strpos($targetLower, $w) !== false) {
-                                            $matchedWords++;
-                                        }
-                                    }
-                                    $wordScore = (count($wordsOFF) > 0) ? ($matchedWords / count($wordsOFF)) * 100 : 0;
-
-                                    $lev = levenshtein($cleanOFF, $cleanJTL);
-                                    $maxLen = max(strlen($cleanOFF), strlen($cleanJTL));
-                                    $levScore = ($maxLen > 0) ? (1 - $lev / $maxLen) * 100 : 0;
-
-                                    $currentScore = ($wordScore * 0.7) + ($levScore * 0.3);
-
-                                    if ($currentScore > $score) {
-                                        $score = $currentScore;
-                                        $finalMatch = ['name' => $row['cName'], 'preis' => $row['fVKNetto']];
-                                        $bestName = $row['cName'];
+                                $wordsOFF = preg_split('/[^a-zA-Z0-9]+/', strtolower($offName), -1, PREG_SPLIT_NO_EMPTY);
+                                $matchedWords = 0;
+                                $targetLower = strtolower($row['cName']);
+                                foreach ($wordsOFF as $w) {
+                                    if (strpos($targetLower, $w) !== false) {
+                                        $matchedWords++;
                                     }
                                 }
+                                $wordScore = (count($wordsOFF) > 0) ? ($matchedWords / count($wordsOFF)) * 100 : 0;
 
-                                // Auch hier sauber schließen
-                                $stmtFuzzy->closeCursor();
+                                $lev = levenshtein($cleanOFF, $cleanJTL);
+                                $maxLen = max(strlen($cleanOFF), strlen($cleanJTL));
+                                $levScore = ($maxLen > 0) ? (1 - $lev / $maxLen) * 100 : 0;
 
-                                $debugLog[] = "Artikel geprüft: $count";
-                                $debugLog[] = "Bester Score: " . round($score, 1) . "% ($bestName)";
-                            } catch (Exception $eFuzzy) {
-                                $debugLog[] = "FUZZY FEHLER: " . $eFuzzy->getMessage();
+                                $currentScore = ($wordScore * 0.7) + ($levScore * 0.3);
+
+                                if ($currentScore > $score) {
+                                    $score = $currentScore;
+                                    $finalMatch = ['name' => $row['cName'], 'preis' => $row['fVKNetto']];
+                                }
                             }
+                            $stmtFuzzy->closeCursor();
+                            $debugLog[] = "Bester Score: " . round($score, 1) . "%";
                         }
                     }
-
-                    // 4. Anzeige
-                    if ($finalMatch && $score >= 1) {
-                        $brutto = number_format($finalMatch['preis'] * 1.19, 2, ',', '.');
-                        echo "<div class='pos-display fade-in'>";
-                        echo "<div class='product-name'>" . htmlspecialchars($finalMatch['name'] ?? 'Unbekannt') . "</div>";
-                        echo "<div class='price-tag'>$brutto €</div>";
-                        echo "<div class='match-info'>Scan: $search | Match: " . round($score, 1) . "%</div>";
-                        echo "</div>";
-                    } else {
-                        echo "<div class='info-box'>Produkt nicht gefunden.</div>";
-                    }
-
-                    // STATUS MONITOR
-                    echo "<div class='status-monitor'>";
-                    echo "<strong>MONITOR:</strong><br>";
-                    foreach ($debugLog as $log) {
-                        echo htmlspecialchars($log) . "<br>";
-                    }
-                    echo "</div>";
-
                 } catch (Exception $e) {
-                    echo "<div class='error-box'>Datenbank-Fehler.</div>";
-                    echo "<div class='status-monitor'>" . htmlspecialchars($e->getMessage()) . "</div>";
+                    $debugLog[] = "DB FEHLER: " . $e->getMessage();
                 }
+
+                // 3. Anzeige im Cyber Terminal
+                ?>
+                <div class="terminal-container">
+                        <div class="terminal-header">
+                            <div class="terminal-controls">
+                                <span class="control close"></span>
+                                <span class="control minimize"></span>
+                                <span class="control maximize"></span>
+                            </div>
+                            <div class="terminal-title">SCAN_RESULT_V1.1</div>
+                            <div class="terminal-status">
+                                <span class="status-indicator"></span>
+                                <span>ONLINE</span>
+                            </div>
+                        </div>
+
+                        <div class="terminal-body">
+                            <div class="terminal-content" id="terminal-content">
+                                <?php if (($finalMatch && $score >= 1) || $offData): ?>
+                                    <div class="terminal-line">
+                                        <span class="prompt">root@cyber:~$</span>
+                                        <span class="command">display_product --id <?php echo htmlspecialchars($search); ?></span>
+                                    </div>
+
+                                    <div class="output">
+                                        <?php if (!empty($offData['image_url'])): ?>
+                                            <div class="product-image-container">
+                                                <img src="<?php echo htmlspecialchars($offData['image_url']); ?>" alt="Product">
+                                            </div>
+                                        <?php endif; ?>
+
+                                        <div class="cyber-product-name"><?php echo htmlspecialchars($finalMatch['name'] ?? $offName ?? 'UNBEKANNT'); ?></div>
+                                        <?php if(isset($finalMatch['preis'])): ?>
+                                            <div class="cyber-price-tag"><?php echo number_format($finalMatch['preis'] * 1.19, 2, ',', '.'); ?> €</div>
+                                        <?php else: ?>
+                                            <div class="cyber-price-tag glitch">NO_PRICE</div>
+                                        <?php endif; ?>
+
+                                        <?php if($score > 0): ?>
+                                        <div class="info-row">
+                                            <span class="info">► Match Score: <?php echo round($score, 1); ?>%</span>
+                                        </div>
+                                        <?php endif; ?>
+
+                                        <div class="off-data-grid">
+                                            <div class="off-item"><span class="off-label">Menge:</span><span class="off-value"><?php echo formatValue($offData['quantity'] ?? null); ?></span></div>
+                                            <div class="off-item"><span class="off-label">Marken:</span><span class="off-value"><?php echo formatValue($offData['brands'] ?? null); ?></span></div>
+                                            <div class="off-item"><span class="off-label">Verpackung:</span><span class="off-value"><?php echo formatValue($offData['packaging'] ?? null); ?></span></div>
+                                            <div class="off-item"><span class="off-label">Kategorien:</span><span class="off-value"><?php echo formatValue($offData['categories'] ?? null); ?></span></div>
+                                            <div class="off-item"><span class="off-label">Labels:</span><span class="off-value"><?php echo formatValue($offData['labels'] ?? null); ?></span></div>
+                                            <div class="off-item"><span class="off-label">Herstellung:</span><span class="off-value"><?php echo formatValue($offData['manufacturing_places'] ?? null); ?></span></div>
+                                            <div class="off-item"><span class="off-label">Läden:</span><span class="off-value"><?php echo formatValue($offData['stores'] ?? null); ?></span></div>
+                                            <div class="off-item"><span class="off-label">Länder:</span><span class="off-value"><?php echo formatValue($offData['countries'] ?? null); ?></span></div>
+                                        </div>
+
+                                        <div class="terminal-line">
+                                            <span class="prompt">root@cyber:~$</span>
+                                            <span class="command">matrix_view</span>
+                                        </div>
+                                        <div class="output">
+                                            <div class="matrix-display" id="matrix-display"></div>
+                                        </div>
+                                    </div>
+
+                                <?php else: ?>
+                                    <div class="output">
+                                        <span class="error">✗ PRODUCT_NOT_FOUND</span>
+                                    </div>
+                                <?php endif; ?>
+
+                                <div class="terminal-line">
+                                    <span class="prompt">root@cyber:~$</span>
+                                    <span class="command">show_logs --monitor</span>
+                                </div>
+                                <div class="output">
+                                    <?php foreach ($debugLog as $log): ?>
+                                        <div class="success">✓ <?php echo htmlspecialchars($log); ?></div>
+                                    <?php endforeach; ?>
+                                </div>
+
+                                <div class="terminal-line">
+                                    <span class="prompt">root@cyber:~$</span>
+                                    <span class="command" id="typing-command"></span>
+                                    <span class="cursor">█</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="terminal-footer">
+                            <div class="footer-info">
+                                <span>CONNECTION: SECURE</span>
+                                <span>UPTIME: <?php echo date('H:i:s'); ?></span>
+                                <span>v1.1</span>
+                            </div>
+                        </div>
+                    </div>
+                    <?php
             }
             ?>
         </div>
     </div>
+    <script src="../js/cyber-terminal.js"></script>
 </body>
 
 </html>
