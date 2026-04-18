@@ -28,18 +28,15 @@ const observer = new IntersectionObserver((entries, observer) => {
     entries.forEach(entry => {
         if (entry.isIntersecting) {
             entry.target.classList.add('visible');
-            // Optional: Stop observing once visible if you want the animation to happen only once
-            // observer.unobserve(entry.target);
-        } else {
-             // Optional: Remove class to re-animate when scrolling back up
-             entry.target.classList.remove('visible');
+            // Remove the observer so it stays visible and doesn't "fade out" when scrolling away
+            observer.unobserve(entry.target);
         }
     });
 }, observerOptions);
 
 document.addEventListener('DOMContentLoaded', () => {
     // Select elements to animate
-    const animateElements = document.querySelectorAll('.title, .box, .content, .subtitle, p, img');
+    const animateElements = document.querySelectorAll('.title, .box, .content, .subtitle, p, img, .table-container');
     animateElements.forEach(el => {
         el.classList.add('fade-in-up'); // Add base class
         observer.observe(el);
