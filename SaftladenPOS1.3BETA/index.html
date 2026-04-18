@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="de">
+
+<head>
+    <meta charset="UTF-8">
+    <title>SaftladenSuite POS v1.3 - Showcase</title>
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;700&family=Lato&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/common.css">
+    <link rel="stylesheet" href="css/cyber-terminal.css">
+</head>
+
+<body>
+    <div class="background-effects">
+        <div class="grid-overlay"></div>
+        <div class="scan-line"></div>
+        <div class="floating-code"></div>
+    </div>
+
+    <!-- Hamburger Menu -->
+    <input class="menu-icon" type="checkbox" id="menu-icon" name="menu-icon"/>
+    <label for="menu-icon" class="menu-label"></label>
+    <nav class="nav">
+      <ul class="pt-5">
+        <li><a href="index.html">Scanner</a></li>
+        <li><a href="dev/Home.html">Home</a></li>
+        <li><a href="dev/Statistik.html">Statistik</a></li>
+		<li><a href="https://www.icpmuenchen.de/">
+            <img src="https://iili.io/f8QkeA7.png" alt="ICPLogo" style="width:200px;height:200px;">
+        </a></li>
+      </ul>
+    </nav>
+
+    <a href="dev/Home.html" class="logo">
+        <img src="https://iili.io/f8QkeA7.png" alt="Logo">
+        <span class="logo-text">SaftladenSuite</span>
+    </a>
+
+    <div class="content">
+        <h1 class="title aurora-text">SaftladenSuite <sup>pro max</sup></h1>
+
+        <div class="barcode-container">
+            <form id="barcode-form" class="barcode-form">
+                <label for="search">Barcode scannen</label>
+                <div class="barcode-input-wrapper">
+                    <input type="text" id="search" name="search" placeholder="Hier scannen..." autofocus
+                        autocomplete="off">
+                    <div class="input-glow"></div>
+                </div>
+                <button type="submit" class="barcode-btn">Suchen</button>
+            </form>
+        </div>
+
+        <div class="results" id="results-area">
+            <!-- Results will be injected here by JS -->
+        </div>
+    </div>
+
+    <!-- External Libraries for 3D/Smooth Scroll Effects -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/studio-freight/lenis@1.0.29/bundled/lenis.min.js"></script>
+
+    <!-- SQL.js for local database -->
+    <script src="js/sql-wasm.js"></script>
+    <script>
+        const config = {
+            locateFile: filename => `js/${filename}`
+        };
+
+        let db = null;
+
+        async function initDb() {
+            try {
+                const SQL = await initSqlJs(config);
+                const response = await fetch('saftladen.db');
+                if (!response.ok) throw new Error("Database file not found");
+                const buf = await response.arrayBuffer();
+                db = new SQL.Database(new Uint8Array(buf));
+                console.log("Database loaded successfully");
+            } catch (err) {
+                console.error("Failed to load database:", err);
+            }
+        }
+
+        initDb().then(() => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const searchQuery = urlParams.get('search');
+            if (searchQuery) {
+                document.getElementById('search').value = searchQuery;
+                handleSearch();
+            }
+        });
+
+        // Fuzzy matching and search logic
+        function cleanString(str) {
+            if (!str) return "";
+            return str.toLowerCase().replace(/[^a-z0-9]/g, '');
+        }
+
+        function levenshtein(a, b) {
+            const matrix = [];
+            for (let i = 0; i <= b.length; i++) matrix[i] = [i];
+            for (let j = 0; j <= a.length; j++) matrix[0][j] = j;
+            for (let i = 1; i <= b.length; i++) {
+                for (let j = 1; j <= a.length; j++) {
+                    if (b.charAt(i - 1) === a.charAt(j - 1)) {
+                        matrix[i][j] = matrix[i - 1][j - 1];
+                    } else {
+                        matrix[i][j] = Math.min(matrix[i - 1][j - 1] + 1, matrix[i][j - 1] + 1, matrix[i - 1][j] + 1);
+                    }
+                }
+            }
+            return matrix[b.length][a.length];
+        }
+
+        async function handleSearch(event) {
+            if (event) event.preventDefault();
+            const searchInput = document.getElementById('search');
+            const search = searchInput.value.trim();
+            if (!search) return;
+
+            const resultsArea = document.getElementById('results-area');
+            resultsArea.innerHTML = '<div class="terminal-container"><div class="terminal-body"><div class="terminal-content" id="terminal-content">Scanning...</div></div></div>';
+
+            let debugLog = [`Scan: ${search}`];
+            let offData = null;
+            let offName = "";
+            let finalMatch = null;
+            let score = 0;
+
+            // 1. API Query (OpenFoodFacts)
+            try {
+                const api_url = `https://world.openfoodfacts.org/api/v0/product/${encodeURIComponent(search)}.json`;
+                const response = await fetch(api_url);
+                const json = await response.json();
+                if (json.status === 1) {
+                    offData = json.product;
+                    const brands = offData.brands || "";
+                    const name = offData.product_name_de || offData.product_name || "";
+                    if (brands && !name.toLowerCase().includes(brands.toLowerCase())) {
+                        let brandShort = brands.split(',')[0].trim();
+                        offName = `${brandShort} ${name}`.trim();
+                    } else {
+                        offName = name.trim();
+                    }
+                }
+            } catch (err) {
+                console.error("API Error:", err);
+            }
+            debugLog.push(`API: ${offName || "No name found on web"}`);
+
+            // 2. Database Query
+            if (db) {
+                try {
+                    const stmtDirect = db.prepare("SELECT fVKNetto, cName FROM tArtikel a LEFT JOIN tArtikelBeschreibung b ON a.kArtikel = b.kArtikel WHERE a.cArtNr = ? OR a.cBarcode = ?");
+                    stmtDirect.bind([search, search]);
+                    if (stmtDirect.step()) {
+                        const row = stmtDirect.getAsObject();
+                        finalMatch = { name: row.cName, preis: row.fVKNetto };
+                        score = 100;
+                        debugLog.push("Direct hit: YES");
+                    } else {
+                        debugLog.push("Direct hit: NO");
+                        if (offName) {
+                            const cleanOFF = cleanString(offName);
+                            const stmtFuzzy = db.prepare("SELECT b.cName, a.fVKNetto FROM tArtikel a JOIN tArtikelBeschreibung b ON a.kArtikel = b.kArtikel WHERE b.cName IS NOT NULL");
+
+                            while (stmtFuzzy.step()) {
+                                const row = stmtFuzzy.getAsObject();
+                                const cleanJTL = cleanString(row.cName);
+                                if (!cleanJTL) continue;
+
+                                const wordsOFF = offName.toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
+                                let matchedWords = 0;
+                                const targetLower = row.cName.toLowerCase();
+                                wordsOFF.forEach(w => {
+                                    if (targetLower.includes(w)) matchedWords++;
+                                });
+                                const wordScore = wordsOFF.length > 0 ? (matchedWords / wordsOFF.length) * 100 : 0;
+
+                                const lev = levenshtein(cleanOFF, cleanJTL);
+                                const maxLen = Math.max(cleanOFF.length, cleanJTL.length);
+                                const levScore = maxLen > 0 ? (1 - lev / maxLen) * 100 : 0;
+
+                                const currentScore = (wordScore * 0.78) + (levScore * 0.22);
+                                if (currentScore > score) {
+                                    score = currentScore;
+                                    finalMatch = { name: row.cName, preis: row.fVKNetto };
+                                }
+                            }
+                            stmtFuzzy.free();
+                        }
+                    }
+                    stmtDirect.free();
+                } catch (err) {
+                    debugLog.push(`DB ERROR: ${err.message}`);
+                }
+            }
+
+            const isRedTheme = (score < 35 && !finalMatch);
+            renderResults(isRedTheme, search, finalMatch, offData, offName, score, debugLog);
+            searchInput.value = '';
+            searchInput.focus();
+        }
+
+        function renderResults(isRedTheme, search, finalMatch, offData, offName, score, debugLog) {
+            const resultsArea = document.getElementById('results-area');
+            const themeClass = isRedTheme ? 'red-alert' : '';
+
+            let html = `
+                <div class="terminal-container ${themeClass}">
+                    <div class="terminal-header">
+                        <div class="terminal-controls">
+                            <span class="control close"></span>
+                            <span class="control minimize"></span>
+                            <span class="control maximize"></span>
+                        </div>
+                        <div class="terminal-title">SCAN_RESULT_V1.3_SHOWCASE</div>
+                        <div class="terminal-status">
+                            <span class="status-indicator"></span>
+                            <span>ONLINE</span>
+                        </div>
+                    </div>
+                    <div class="terminal-body">
+                        <div class="terminal-content" id="terminal-content">
+            `;
+
+            if (finalMatch || offData) {
+                html += `
+                    <div class="terminal-line1">
+                        <span class="prompt">root@Saftladen:~$</span>
+                        <span class="command">display_product --id ${search}</span>
+                    </div>
+                    <div class="output">
+                        ${isRedTheme ? '<div class="item-not-in-db-banner">ITEM NOT IN EXAMPLE DATABASE</div>' : ''}
+
+                        ${offData && offData.image_url ? `
+                            <div class="product-image-container">
+                                <img src="${offData.image_url}" alt="Product">
+                            </div>
+                        ` : ''}
+
+                        <div class="cyber-product-name">
+                            ${(finalMatch && score > 35) ? finalMatch.name : (offName || 'UNKNOWN')}
+                        </div>
+
+                        ${finalMatch ? `
+                            <div class="cyber-price-tag">
+                                ${(finalMatch.preis * 1.19).toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €
+                            </div>
+                        ` : '<div class="cyber-price-tag glitch">NO_PRICE</div>'}
+
+                        <div class="off-data-grid">
+                            <div class="off-item"><span class="off-label">Menge:</span><span class="off-value">${offData ? offData.quantity || "N/A" : "N/A"}</span></div>
+                            <div class="off-item"><span class="off-label">Marken:</span><span class="off-value">${offData ? offData.brands || "N/A" : "N/A"}</span></div>
+                        </div>
+
+                        <div class="terminal-line">
+                            <span class="prompt">root@Saftladen:~$</span>
+                            <span class="command">show_logs --monitor</span>
+                        </div>
+                        <div class="output">
+                            ${debugLog.map(log => `<div class="success">✓ ${log}</div>`).join('')}
+                        </div>
+                    </div>
+                `;
+            } else {
+                html += `<div class="output"><span class="error">✗ PRODUCT_NOT_FOUND</span></div>`;
+            }
+
+            html += `
+                        </div>
+                    </div>
+                    <div class="terminal-footer">
+                        <div class="footer-info">
+                            <span>CONNECTION: SECURE</span>
+                            <span>UPTIME: ${new Date().toLocaleTimeString()}</span>
+                            <span>v1.3 Showcase</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            resultsArea.innerHTML = html;
+            if (window.cyberTerminal) {
+                window.cyberTerminal.typeExistingContent();
+            }
+        }
+
+        document.getElementById('barcode-form').addEventListener('submit', handleSearch);
+    </script>
+    <script src="js/cyber-terminal.js"></script>
+    <script src="js/particles.min.js"></script>
+    <script src="js/background.js"></script>
+    <script src="js/atoms.js"></script>
+    <script src="js/main.js"></script>
+</body>
+
+</html>
